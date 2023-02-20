@@ -1,28 +1,78 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import "./mainContent.css";
 
 const MAX_WIDTH = 1000;
 const MAX_HEIGHT = 850;
 
+const MOUSE_STATE = {
+  mouseDown: 1,
+  mouseUp: 2,
+};
+let mouseState = MOUSE_STATE.mouseUp;
+let startingCordinates = {};
+let imageStateList = [];
+let width = null;
+let height = null;
+let canvas = null;
+let ctx = null;
 const MainContent = () => {
+  //   const [mouseState, setmouseState] = useState(MOUSE_STATE.mouseUp);
   const uploadedFile = useSelector(
     (state) => state.sideBarReducer.uploadedFile
   );
 
-  console.log(uploadedFile);
+  useEffect(() => {
+    canvas = document.querySelector("#myCanvas");
+    ctx = canvas.getContext("2d");
+
+    canvas.addEventListener("mousemove", (e) => {
+      if (mouseState == MOUSE_STATE.mouseDown) {
+        const leftTopCoordinates = {
+          x: startingCordinates.x - canvas.offsetLeft,
+          y: startingCordinates.y - canvas.offsetTop,
+        };
+
+        const rightBottomCoordinates = {
+          width: e.clientX - leftTopCoordinates.x,
+          height: e.clientY - leftTopCoordinates.y,
+        };
+
+        drawImage(imageStateList[imageStateList.length - 1], () => {
+          ctx.beginPath();
+          ctx.lineWidth = "1";
+          ctx.strokeStyle = "white";
+          ctx.rect(
+            leftTopCoordinates.x,
+            leftTopCoordinates.y,
+            rightBottomCoordinates.width,
+            rightBottomCoordinates.height
+          );
+          ctx.stroke();
+        });
+      }
+    });
+    canvas.addEventListener("mousedown", (e) => {
+      // setmouseState(MOUSE_STATE.mouseDown)
+      mouseState = MOUSE_STATE.mouseDown;
+      startingCordinates = { x: e.clientX, y: e.clientY };
+    });
+    canvas.addEventListener("mouseup", (e) => {
+      // setmouseState(MOUSE_STATE.mouseUp)
+      mouseState = MOUSE_STATE.mouseUp;
+      imageStateList.push(canvas.toDataURL());
+    });
+  }, []);
 
   useEffect(() => {
-    console.log(uploadedFile);
-    uploadedFile;
-    const canvas = document.querySelector("#myCanvas");
-    let ctx = canvas.getContext("2d");
+    drawImage(uploadedFile);
+  }, [uploadedFile]);
 
+  const drawImage = (uploadedFile, callback) => {
     let newImage = new Image();
     newImage.src = uploadedFile;
 
     newImage.onload = function () {
-      debugger;
       let width = this.width;
       let height = this.height;
       if (width > height) {
@@ -40,11 +90,15 @@ const MainContent = () => {
       canvas.width = width;
       canvas.height = height;
       ctx.drawImage(newImage, 0, 0, width, height);
+      imageStateList.push(canvas.toDataURL());
+
+      if (callback) callback();
     };
-  }, [uploadedFile]);
+  };
 
   return (
     <div className="d-flex">
+      {mouseState}
       <canvas id="myCanvas"></canvas>
     </div>
   );
