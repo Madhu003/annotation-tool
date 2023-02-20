@@ -16,7 +16,7 @@ let width = null;
 let height = null;
 let canvas = null;
 let ctx = null;
-let annotationsList = []
+let annotationsList = [];
 
 const MainContent = () => {
   //   const [mouseState, setmouseState] = useState(MOUSE_STATE.mouseUp);
@@ -30,7 +30,6 @@ const MainContent = () => {
 
     canvas.addEventListener("mousemove", (e) => {
       if (mouseState == MOUSE_STATE.mouseDown) {
-        
         const leftTopCoordinates = {
           x: startingCordinates.x - canvas.offsetLeft,
           y: startingCordinates.y - canvas.offsetTop,
@@ -41,7 +40,7 @@ const MainContent = () => {
           height: e.clientY - startingCordinates.y,
         };
 
-        console.log(rightBottomCoordinates)
+        console.log(rightBottomCoordinates);
         drawImage(imageStateList[imageStateList.length - 1], () => {
           ctx.beginPath();
           ctx.lineWidth = "1";
@@ -53,7 +52,6 @@ const MainContent = () => {
             rightBottomCoordinates.height
           );
           ctx.stroke();
-          
         });
       }
     });
@@ -76,14 +74,17 @@ const MainContent = () => {
         width: e.clientX - startingCordinates.x,
         height: e.clientY - startingCordinates.y,
       };
-      annotationsList.push([leftTopCoordinates.x, leftTopCoordinates.y, e.clientX, e.clientY])
-      console.log(annotationsList)
+      annotationsList.push([
+        leftTopCoordinates.x,
+        leftTopCoordinates.y,
+        e.clientX,
+        e.clientY,
+      ]);
+      console.log(annotationsList);
     });
   }, []);
 
-  useEffect(() => {
-    drawImage(uploadedFile);
-  }, [uploadedFile]);
+  useEffect(() => drawImage(uploadedFile), [uploadedFile]);
 
   const drawImage = (uploadedFile, callback) => {
     let newImage = new Image();

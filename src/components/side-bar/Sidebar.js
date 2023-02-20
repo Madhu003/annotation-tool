@@ -4,10 +4,10 @@ import { sideBarReducer } from "../../reducers/sideBarReducer";
 import { useDispatch } from "react-redux";
 
 export const Sidebar = () => {
-    const dispatch = useDispatch()
+  const dispatch = useDispatch();
 
   return (
-    <div className="d-flex container">
+    <div className="d-flex flex-column container">
       <div className="upload-section">
         <input
           type="file"
@@ -25,6 +25,12 @@ export const Sidebar = () => {
           }}
         />
       </div>
+      <button
+        className="btn btn-sm btn-primary"
+        onClick={() => dispatch({ type: "DOWNLOAD_IMAGE" })}
+      >
+        Download Image
+      </button>
     </div>
   );
 };
