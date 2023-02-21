@@ -1,11 +1,8 @@
 .side-bar {
-  width: 30%;
+  width: 20%;
   margin-right: 10px;
-
-  /* background-color: red; */
 }
 
 .main-content {
-  width: 70%;
-  /* background-color: black; */
+  width: 80%;
 }

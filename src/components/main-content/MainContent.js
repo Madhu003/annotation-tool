@@ -147,7 +147,7 @@ const MainContent = () => {
   };
 
   return (
-    <div className="d-flex">
+    <div className="d-flex justify-content-center w-100 pt-4">
       <canvas id="myCanvas"></canvas>
     </div>
   );
