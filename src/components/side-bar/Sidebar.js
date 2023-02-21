@@ -72,6 +72,21 @@ export const Sidebar = () => {
       >
         Download Image
       </button>
+
+      <hr />
+
+      <div class="input-group">
+        <input type="text" class="form-control" placeholder="Field Name" />
+        <div class="input-group-append">
+          <button
+            class="btn btn-primary"
+            type="button"
+            style={{ borderBottomLeftRadius: 0, borderTopLeftRadius: 0 }}
+          >
+            Save
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
