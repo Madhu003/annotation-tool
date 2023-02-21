@@ -94,7 +94,7 @@ const MainContent = () => {
 
       setTimeout(() => {
         imageStateList.push(canvas.toDataURL());
-      }, 500);
+      }, 100);
     });
   }, []);
 
@@ -148,7 +148,6 @@ const MainContent = () => {
 
   return (
     <div className="d-flex">
-      {mouseState}
       <canvas id="myCanvas"></canvas>
     </div>
   );
