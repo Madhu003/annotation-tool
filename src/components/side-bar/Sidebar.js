@@ -61,10 +61,8 @@ export const Sidebar = () => {
           const canvas = document.querySelector("#myCanvas");
 
           const baseUrl = canvas.toDataURL();
-          const blob = new Blob([baseUrl], { type: "plain/text" });
 
           const imageURL = URL.createObjectURL(dataURItoBlob(baseUrl));
-          console.log(imageURL);
           const aElement = document.createElement("a");
           aElement.href = imageURL;
           aElement.download = "test.png";

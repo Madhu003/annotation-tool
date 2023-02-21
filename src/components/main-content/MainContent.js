@@ -44,7 +44,6 @@ const MainContent = () => {
           height: e.clientY - startingCordinates.y,
         };
 
-        console.log(rightBottomCoordinates);
         drawImage(imageStateList[imageStateList.length - 1], () => {
           ctx.beginPath();
           ctx.lineWidth = "1";
@@ -67,7 +66,6 @@ const MainContent = () => {
     canvas.addEventListener("mouseup", (e) => {
       // setmouseState(MOUSE_STATE.mouseUp)
       mouseState = MOUSE_STATE.mouseUp;
-      imageStateList.push(canvas.toDataURL());
 
       const leftTopCoordinates = {
         x: startingCordinates.x - canvas.offsetLeft,
@@ -94,7 +92,9 @@ const MainContent = () => {
         ],
       });
 
-      console.log(annotationsList);
+      setTimeout(() => {
+        imageStateList.push(canvas.toDataURL());
+      }, 500);
     });
   }, []);
 
