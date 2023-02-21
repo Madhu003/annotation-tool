@@ -88,7 +88,7 @@ const MainContent = () => {
               e.clientY,
             ],
           },
-          ...(annotationsList || []),
+          ...annotationsList,
         ],
       });
 
