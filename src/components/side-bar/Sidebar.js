@@ -1,9 +1,11 @@
 import React from "react";
 import "./sidebar.css";
-import { sideBarReducer } from "../../reducers/sideBarReducer";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 export const Sidebar = () => {
+  const annotationsList = useSelector(
+    (state) => state.mainContentReducer.annotationsList
+  );
   const dispatch = useDispatch();
 
   const dataURItoBlob = (dataURI) => {
@@ -18,9 +20,9 @@ export const Sidebar = () => {
 
   return (
     <div className="d-flex flex-column container">
-      <div className="upload-section">
+      <div className="upload-section mt-4">
         <input
-          className="form-control my-4"
+          className="form-control"
           type="file"
           onChange={(e) => {
             console.log(e);
@@ -36,8 +38,25 @@ export const Sidebar = () => {
           }}
         />
       </div>
+
       <button
-        className="btn btn-sm btn-primary"
+        className="btn btn-sm btn-primary mt-4"
+        onClick={() => {
+          const aElement = document.createElement("a");
+          const dataStr =
+            "data:text/json;charset=utf-8," +
+            encodeURIComponent(JSON.stringify(annotationsList, "", 4));
+          aElement.href = dataStr;
+          aElement.download = "test.json";
+          aElement.click();
+          // dispatch({ type: "DOWNLOAD_IMAGE" })
+        }}
+      >
+        Download JSON
+      </button>
+
+      <button
+        className="btn btn-sm btn-primary mt-4"
         onClick={() => {
           const canvas = document.querySelector("#myCanvas");
 

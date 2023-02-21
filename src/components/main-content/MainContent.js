@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import "./mainContent.css";
 
 const MAX_WIDTH = 1000;
@@ -16,13 +16,17 @@ let width = null;
 let height = null;
 let canvas = null;
 let ctx = null;
-let annotationsList = [];
+// let annotationsList = [];
 
 const MainContent = () => {
   //   const [mouseState, setmouseState] = useState(MOUSE_STATE.mouseUp);
+  const dispatch = useDispatch();
   const uploadedFile = useSelector(
     (state) => state.sideBarReducer.uploadedFile
   );
+  const annotationsList = useSelector((state) => {
+    return state.mainContentReducer.annotationsList;
+  });
 
   useEffect(() => {
     canvas = document.querySelector("#myCanvas");
@@ -74,17 +78,45 @@ const MainContent = () => {
         width: e.clientX - startingCordinates.x,
         height: e.clientY - startingCordinates.y,
       };
-      annotationsList.push([
-        leftTopCoordinates.x,
-        leftTopCoordinates.y,
-        e.clientX,
-        e.clientY,
-      ]);
+
+      dispatch({
+        type: "APPEND_NEW_COORDINATES",
+        payload: [
+          {
+            coordinates: [
+              leftTopCoordinates.x,
+              leftTopCoordinates.y,
+              e.clientX,
+              e.clientY,
+            ],
+          },
+          ...(annotationsList || []),
+        ],
+      });
+
       console.log(annotationsList);
     });
   }, []);
 
-  useEffect(() => drawImage(uploadedFile), [uploadedFile]);
+  useEffect(
+    () =>
+      drawImage(uploadedFile, () => {
+        // ctx.beginPath();
+        // ctx.lineWidth = "1";
+        // ctx.strokeStyle = "white";
+        // // 198, 183, 1353, 360
+        // sampleAnnotations.forEach((item) => {
+        //   ctx.rect(
+        //     item[0],
+        //     item[1],
+        //     item[2] - item[0] - canvas.offsetLeft,
+        //     item[3] - item[1] - canvas.offsetTop
+        //   );
+        // });
+        // ctx.stroke();
+      }),
+    [uploadedFile]
+  );
 
   const drawImage = (uploadedFile, callback) => {
     let newImage = new Image();
@@ -123,3 +155,14 @@ const MainContent = () => {
 };
 
 export default MainContent;
+
+const sampleAnnotations = [
+  [88, 91, 798, 199],
+  [323, 94, 1024, 184],
+  [556, 93, 1245, 194],
+  [783, 90, 1470, 196],
+  [102, 302, 790, 414],
+  [328, 301, 1017, 409],
+  [559, 297, 1251, 398],
+  [784, 299, 1476, 404],
+];
