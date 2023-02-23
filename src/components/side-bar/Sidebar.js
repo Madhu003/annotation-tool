@@ -77,7 +77,8 @@ export const Sidebar = () => {
           className="form-control"
           type="file"
           onChange={imageUploadHandler}
-          accept="image/*, application/pdf"
+          // accept="image/*, application/pdf"
+          accept="image/*"
         />
       </div>
 
