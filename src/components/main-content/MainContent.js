@@ -18,17 +18,24 @@ let ctx = null;
 
 const MainContent = () => {
   const [mouseState, setmouseState] = useState(MOUSE_STATE.mouseUp);
-  const dispatch = useDispatch();
   const uploadedFile = useSelector(
     (state) => state.sideBarReducer.uploadedFile
   );
   const annotationsList = useSelector(
     (state) => state.mainContentReducer.annotationsList
   );
+  const dispatch = useDispatch();
 
   useEffect(() => {
     canvas = document.querySelector("#myCanvas");
     ctx = canvas.getContext("2d");
+
+    document.addEventListener("keydown", (e) => {
+      if (e.code == "KeyZ" && e.ctrlKey) {
+        imageStateList.pop();
+        drawImage(imageStateList[imageStateList.length - 1]);
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -49,6 +56,14 @@ const MainContent = () => {
       });
       ctx.stroke();
     });
+
+    dispatch({
+      type: "APPEND_NEW_COORDINATES",
+      payload: [],
+    });
+
+    startingCordinates = {};
+    imageStateList = [];
   }, [uploadedFile]);
 
   const mouseMoveHandler = (e) => {
@@ -154,6 +169,12 @@ const MainContent = () => {
         onMouseDown={mouseDownHandler}
         onMouseUp={mouseUpHandler}
       ></canvas>
+      {/* {imageStateList.length}
+      <div>
+        {imageStateList.map((item) => (
+          <img src={item} width="200" height="200" />
+        ))}
+      </div> */}
     </div>
   );
 };
