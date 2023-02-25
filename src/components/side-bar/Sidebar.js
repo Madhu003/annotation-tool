@@ -6,6 +6,7 @@ import React from "react";
 
 import "./sidebar.css";
 import { useDispatch, useSelector } from "react-redux";
+import { dataURItoBlob, generateRandomString } from "../../util";
 // import pdf from "pdfjs";
 
 export const Sidebar = () => {
@@ -13,15 +14,6 @@ export const Sidebar = () => {
     (state) => state.mainContentReducer.annotationsList
   );
   const dispatch = useDispatch();
-
-  const dataURItoBlob = (dataURI) => {
-    const mime = dataURI.split(",")[0].split(":")[1].split(";")[0];
-    const binary = atob(dataURI.split(",")[1]);
-
-    const array = binary.split("").map((_, i) => binary.charCodeAt(i));
-
-    return new Blob([new Uint8Array(array)], { type: mime });
-  };
 
   const loadPdf = async (fileObject) => {
     return;
@@ -70,6 +62,35 @@ export const Sidebar = () => {
     }
   };
 
+  const downloadJsonHandler = () => {
+    const JsonToExport = {
+      id: generateRandomString(),
+      annotationsList: annotationsList.map((item) => ({
+        ...item,
+        id: generateRandomString(),
+        fieldName: "",
+        value: "",
+      })),
+    };
+
+    const aElement = document.createElement("a");
+    aElement.href =
+      "data:text/json;charset=utf-8," +
+      encodeURIComponent(JSON.stringify(JsonToExport, "", 4));
+    aElement.download = "test.json";
+    aElement.click();
+  };
+
+  const downloadImageHandler = () => {
+    const canvas = document.querySelector("#myCanvas");
+
+    const imageURL = URL.createObjectURL(dataURItoBlob(canvas.toDataURL()));
+    const aElement = document.createElement("a");
+    aElement.href = imageURL;
+    aElement.download = "test.png";
+    aElement.click();
+  };
+
   return (
     <div className="d-flex flex-column container">
       <div className="upload-section mt-4">
@@ -84,34 +105,14 @@ export const Sidebar = () => {
 
       <button
         className="btn btn-sm btn-primary mt-4"
-        onClick={() => {
-          const aElement = document.createElement("a");
-          const dataStr =
-            "data:text/json;charset=utf-8," +
-            encodeURIComponent(JSON.stringify(annotationsList, "", 4));
-          aElement.href = dataStr;
-          aElement.download = "test.json";
-          aElement.click();
-          // dispatch({ type: "DOWNLOAD_IMAGE" })
-        }}
+        onClick={downloadJsonHandler}
       >
         Download JSON
       </button>
 
       <button
         className="btn btn-sm btn-primary mt-4"
-        onClick={() => {
-          const canvas = document.querySelector("#myCanvas");
-
-          const baseUrl = canvas.toDataURL();
-
-          const imageURL = URL.createObjectURL(dataURItoBlob(baseUrl));
-          const aElement = document.createElement("a");
-          aElement.href = imageURL;
-          aElement.download = "test.png";
-          aElement.click();
-          // dispatch({ type: "DOWNLOAD_IMAGE" })
-        }}
+        onClick={downloadImageHandler}
       >
         Download Image
       </button>
