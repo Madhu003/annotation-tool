@@ -65,12 +65,25 @@ export const Sidebar = () => {
   const downloadJsonHandler = () => {
     const JsonToExport = {
       id: generateRandomString(),
-      annotationsList: annotationsList.map((item) => ({
-        ...item,
-        id: generateRandomString(),
-        fieldName: "",
-        value: "",
-      })),
+      annotationsList: annotationsList.map((item) => {
+        const [x, y, width, height] = item.coordinates;
+        return {
+          ...item,
+          id: generateRandomString(),
+          fieldName: "",
+          value: "",
+          coordinates: [
+            x,
+            y,
+            x + width,
+            y,
+            x + width,
+            y + height,
+            x,
+            y + height,
+          ],
+        };
+      }),
     };
 
     const aElement = document.createElement("a");
@@ -120,7 +133,12 @@ export const Sidebar = () => {
       <hr />
 
       <div class="input-group">
-        <input type="text" class="form-control" placeholder="Field Name" />
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Field Name"
+          id="field-name"
+        />
         <div class="input-group-append">
           <button
             class="btn btn-primary"

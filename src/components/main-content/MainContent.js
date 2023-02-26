@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { generateRandomString } from "../../util";
 import "./mainContent.css";
 
 const MAX_WIDTH = 1000;
@@ -31,7 +32,7 @@ const MainContent = () => {
     ctx = canvas.getContext("2d");
 
     document.addEventListener("keydown", (e) => {
-      if (e.code == "KeyZ" && e.ctrlKey) {
+      if (e.code === "KeyZ" && e.ctrlKey) {
         imageStateList.pop();
         drawImage(imageStateList[imageStateList.length - 1]);
       }
@@ -46,12 +47,12 @@ const MainContent = () => {
       ctx.strokeStyle = "white";
       // 198, 183, 1353, 360
 
-      sampleAnnotations.forEach((item) => {
+      sampleAnnotations.annotationsList.forEach((item) => {
         ctx.rect(
           item.coordinates[0],
           item.coordinates[1],
-          item.coordinates[2],
-          item.coordinates[3]
+          item.coordinates[4] - item.coordinates[0],
+          item.coordinates[5] - item.coordinates[1]
         );
       });
       ctx.stroke();
@@ -67,7 +68,7 @@ const MainContent = () => {
   }, [uploadedFile]);
 
   const mouseMoveHandler = (e) => {
-    if (mouseState == MOUSE_STATE.mouseDown) {
+    if (mouseState === MOUSE_STATE.mouseDown) {
       const leftTopCoordinates = {
         x: startingCordinates.x - canvas.offsetLeft + window.scrollX,
         y: startingCordinates.y - canvas.offsetTop + window.scrollY,
@@ -94,43 +95,69 @@ const MainContent = () => {
   };
 
   const mouseDownHandler = (e) => {
-    // mouseState = MOUSE_STATE.mouseDown;
     setmouseState(MOUSE_STATE.mouseDown);
     startingCordinates = { x: e.clientX, y: e.clientY };
   };
 
   const mouseUpHandler = (e) => {
     setmouseState(MOUSE_STATE.mouseUp);
-    // mouseState = MOUSE_STATE.mouseUp;
 
-    const leftTopCoordinates = {
-      x: startingCordinates.x - canvas.offsetLeft,
-      y: startingCordinates.y - canvas.offsetTop,
-    };
+    const [leftTopCoordinate_x, leftTopCoordinates_y] = getRealCoordinates([
+      startingCordinates.x,
+      startingCordinates.y,
+    ]);
 
     const rightBottomCoordinates = {
-      x: e.clientX - startingCordinates.x,
-      y: e.clientY - startingCordinates.y,
+      width: e.clientX - startingCordinates.x,
+      height: e.clientY - startingCordinates.y,
     };
+
+    if (rightBottomCoordinates.width && rightBottomCoordinates.height) {
+      dispatch({
+        type: "APPEND_NEW_COORDINATES",
+        payload: [
+          {
+            coordinates: [
+              leftTopCoordinate_x,
+              leftTopCoordinates_y,
+              rightBottomCoordinates.width,
+              rightBottomCoordinates.height,
+            ],
+            fieldName: new Date().toTimeString(),
+          },
+          ...annotationsList,
+        ],
+      });
+      console.log(annotationsList);
+
+      setTimeout(() => {
+        imageStateList.push(canvas.toDataURL());
+      }, 100);
+    }
+  };
+
+  const clickHandler = (e) => {
+    const [x, y] = getRealCoordinates([
+      startingCordinates.x,
+      startingCordinates.y,
+    ]);
+
+    annotationsList.forEach((item) => {
+      if (
+        item.coordinates[0] <= x &&
+        item.coordinates[1] <= y &&
+        item.coordinates[4] >= x &&
+        item.coordinates[5] >= y
+      ) {
+        item.fieldName = generateRandomString();
+        document.querySelector("#field-name").value = item.fieldName;
+      }
+    });
 
     dispatch({
       type: "APPEND_NEW_COORDINATES",
-      payload: [
-        {
-          coordinates: [
-            leftTopCoordinates.x,
-            leftTopCoordinates.y,
-            rightBottomCoordinates.x,
-            rightBottomCoordinates.y,
-          ],
-        },
-        ...annotationsList,
-      ],
+      payload: [...annotationsList],
     });
-    console.log(annotationsList);
-    setTimeout(() => {
-      imageStateList.push(canvas.toDataURL());
-    }, 100);
   };
 
   const drawImage = (uploadedFile, callback) => {
@@ -161,6 +188,11 @@ const MainContent = () => {
     };
   };
 
+  const getRealCoordinates = ([x, y]) => [
+    x - canvas.offsetLeft + window.scrollX,
+    y - canvas.offsetTop + window.scrollY,
+  ];
+
   return (
     <div className="d-flex justify-content-center w-100 pt-4">
       <canvas
@@ -168,6 +200,7 @@ const MainContent = () => {
         onMouseMove={mouseMoveHandler}
         onMouseDown={mouseDownHandler}
         onMouseUp={mouseUpHandler}
+        onClick={clickHandler}
       ></canvas>
       {/* {imageStateList.length}
       <div>
@@ -181,23 +214,32 @@ const MainContent = () => {
 
 export default MainContent;
 
-const sampleAnnotations = [
-  {
-    coordinates: [-1, 411, 40, 36],
-  },
-  {
-    coordinates: [-1, 23, 40, 36],
-  },
-  {
-    coordinates: [272, 294, 345, 219],
-  },
-  {
-    coordinates: [247, 106, 164, 72],
-  },
-  {
-    coordinates: [918, 92, 69, 80],
-  },
-  {
-    coordinates: [2, 526, 36, 33],
-  },
-];
+const sampleAnnotations = {
+  id: "3m4fhpye4l",
+  annotationsList: [
+    {
+      coordinates: [766, 321, 962, 321, 962, 456, 766, 456],
+      id: "onfsmnp20r",
+      fieldName: "",
+      value: "",
+    },
+    {
+      coordinates: [45, 312, 222, 312, 222, 454, 45, 454],
+      id: "uiovztljly",
+      fieldName: "",
+      value: "",
+    },
+    {
+      coordinates: [757, 20, 905, 20, 905, 129, 757, 129],
+      id: "ho2ivhn4zq",
+      fieldName: "",
+      value: "",
+    },
+    {
+      coordinates: [112, 16, 239, 16, 239, 133, 112, 133],
+      id: "n2p3ydkj1z",
+      fieldName: "",
+      value: "",
+    },
+  ],
+};
