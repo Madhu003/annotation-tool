@@ -1,5 +1,5 @@
 export const generateRandomString = () => {
-  let str = "0123456789ancdefghijklmnopqrstuvwxyz";
+  let str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   let result = "";
   for (let i = 0; i < 20; i++) {
     result += str.charAt(Math.floor(Math.random() * str.length));
