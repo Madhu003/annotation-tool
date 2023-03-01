@@ -42,20 +42,20 @@ const MainContent = () => {
   useEffect(() => {
     drawImage(uploadedFile, () => {
       // return;
-      ctx.beginPath();
-      ctx.lineWidth = "2";
-      ctx.strokeStyle = "white";
-      // 198, 183, 1353, 360
+      // ctx.beginPath();
+      // ctx.lineWidth = "2";
+      // ctx.strokeStyle = "white";
+      // // 198, 183, 1353, 360
 
-      sampleAnnotations.annotationsList.forEach((item) => {
-        ctx.rect(
-          item.coordinates[0],
-          item.coordinates[1],
-          item.coordinates[4] - item.coordinates[0],
-          item.coordinates[5] - item.coordinates[1]
-        );
-      });
-      ctx.stroke();
+      // sampleAnnotations.annotationsList.forEach((item) => {
+      //   ctx.rect(
+      //     item.coordinates[0],
+      //     item.coordinates[1],
+      //     item.coordinates[4] - item.coordinates[0],
+      //     item.coordinates[5] - item.coordinates[1]
+      //   );
+      // });
+      // ctx.stroke();
     });
 
     dispatch({
