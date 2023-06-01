@@ -13,8 +13,6 @@ const MOUSE_STATE = {
 };
 let startingCordinates = {};
 let imageStateList = [];
-// let width = null;
-// let height = null;
 let canvas = null;
 let ctx = null;
 
@@ -116,26 +114,25 @@ const MainContent = () => {
 
   const mouseUpHandler = (e) => {
     setmouseState(MOUSE_STATE.mouseUp);
+    let [x2, y2] = getRealCoordinates(e);
 
-    const [x, y] = getRealCoordinates(e);
+    let x1 = Math.min(startingCordinates.x, x2);
+    let y1 = Math.min(startingCordinates.y, y2);
 
-    const rightBottomCoordinates = { x, y };
+    x2 = Math.max(startingCordinates.x, x2);
+    y2 = Math.max(startingCordinates.y, y2);
 
     dispatch({
       type: "APPEND_NEW_COORDINATES",
       payload: [
         {
-          coordinates: [
-            startingCordinates.x,
-            startingCordinates.y,
-            rightBottomCoordinates.x - startingCordinates.x,
-            rightBottomCoordinates.y - startingCordinates.y,
-          ],
+          coordinates: [x1, y1, x2 - x1, y2 - y1],
           fieldName: "untitled",
         },
         ...annotationsList,
       ],
     });
+
     console.log(annotationsList);
 
     setTimeout(() => {
