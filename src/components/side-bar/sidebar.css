@@ -2,3 +2,7 @@
     border-right: 1px solid black;
     min-height: 100vh;
 }
+
+#image-paceholder{
+    display: none;
+}

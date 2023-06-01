@@ -108,6 +108,8 @@ export const Sidebar = () => {
     <div className="d-flex flex-column container">
       <div className="upload-section mt-4">
         <input
+          id="image-paceholder"
+
           className="form-control"
           type="file"
           onChange={imageUploadHandler}

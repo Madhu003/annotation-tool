@@ -1,3 +1,9 @@
 canvas {
-    cursor: crosshair;
+  cursor: crosshair;
+  border: 1px solid #b1b1b1;
+}
+
+#upload-placeholder {
+  width: 50%;
+  cursor: pointer;
 }

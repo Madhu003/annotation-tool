@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { generateRandomString } from "../../util";
+import uploadPlaceholder from "../../assets/file-drop-img.webp";
 import "./mainContent.css";
 
 const MAX_WIDTH = 1000;
@@ -30,9 +31,6 @@ const MainContent = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    canvas = document.querySelector("#myCanvas");
-    ctx = canvas.getContext("2d");
-
     document.addEventListener("keydown", (e) => {
       if (e.code === "KeyZ" && e.ctrlKey) {
         imageStateList.pop();
@@ -42,6 +40,11 @@ const MainContent = () => {
   }, []);
 
   useEffect(() => {
+    if (uploadedFile) {
+      canvas = document.querySelector("#myCanvas");
+      ctx = canvas.getContext("2d");
+    }
+
     drawImage(uploadedFile, () => {
       // return;
       // ctx.beginPath();
@@ -197,16 +200,55 @@ const MainContent = () => {
     e.clientY - canvas.offsetTop + window.scrollY,
   ];
 
+  const clickPlaceholderHandler = () => {
+    document.querySelector("#image-paceholder")?.click();
+  };
+
+  const dropImageHandler = (e) => {
+    e.preventDefault();
+
+    console.log(e.dataTransfer.files);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const fileObject = e.dataTransfer.files[0];
+      const fileReader = new FileReader();
+
+      if (fileObject.type == "application/pdf") {
+        fileReader.onload = function (e) {
+          console.log(e);
+
+          loadPdf(fileObject);
+        };
+      } else {
+        fileReader.onload = (e) => {
+          dispatch({ type: "FILE_UPLOAD", payload: e.target.result });
+        };
+
+        fileReader.readAsDataURL(e.dataTransfer.files[0]);
+      }
+    }
+  };
+
   return (
     <div className="d-flex justify-content-center w-100 pt-4">
-      <canvas
-        id="myCanvas"
-        onMouseMove={mouseMoveHandler}
-        onMouseDown={mouseDownHandler}
-        onMouseUp={mouseUpHandler}
-        onClick={clickHandler}
-        style={{ cursor: isCursorInBox ? "pointer" : "crosshair" }}
-      ></canvas>
+      {uploadedFile ? (
+        <canvas
+          id="myCanvas"
+          onMouseMove={mouseMoveHandler}
+          onMouseDown={mouseDownHandler}
+          onMouseUp={mouseUpHandler}
+          onClick={clickHandler}
+          style={{ cursor: isCursorInBox ? "pointer" : "crosshair" }}
+        ></canvas>
+      ) : (
+        <img
+          id="upload-placeholder"
+          src={uploadPlaceholder}
+          onClick={clickPlaceholderHandler}
+          onDrop={dropImageHandler}
+          onDragOver={(e) => e.preventDefault()}
+        />
+      )}
       {/* {imageStateList.length}
       <div>
         {imageStateList.map((item) => (
