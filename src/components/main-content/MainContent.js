@@ -19,6 +19,8 @@ let ctx = null;
 
 const MainContent = () => {
   const [mouseState, setmouseState] = useState(MOUSE_STATE.mouseUp);
+  const [isCursorInBox, setIsCursorInBox] = useState(false);
+
   const uploadedFile = useSelector(
     (state) => state.sideBarReducer.uploadedFile
   );
@@ -46,7 +48,6 @@ const MainContent = () => {
       // ctx.lineWidth = "2";
       // ctx.strokeStyle = "white";
       // // 198, 183, 1353, 360
-
       // sampleAnnotations.annotationsList.forEach((item) => {
       //   ctx.rect(
       //     item.coordinates[0],
@@ -69,71 +70,74 @@ const MainContent = () => {
 
   const mouseMoveHandler = (e) => {
     if (mouseState === MOUSE_STATE.mouseDown) {
-      const leftTopCoordinates = {
-        x: startingCordinates.x - canvas.offsetLeft + window.scrollX,
-        y: startingCordinates.y - canvas.offsetTop + window.scrollY,
-      };
+      const [x, y] = getRealCoordinates(e);
 
-      const rightBottomCoordinates = {
-        width: e.clientX - startingCordinates.x,
-        height: e.clientY - startingCordinates.y,
-      };
+      const rightBottomCoordinates = { x, y };
 
       drawImage(imageStateList[imageStateList.length - 1], () => {
         ctx.beginPath();
         ctx.lineWidth = "2";
         ctx.strokeStyle = "#ffffff";
         ctx.rect(
-          leftTopCoordinates.x,
-          leftTopCoordinates.y,
-          rightBottomCoordinates.width,
-          rightBottomCoordinates.height
+          startingCordinates.x,
+          startingCordinates.y,
+          rightBottomCoordinates.x - startingCordinates.x, // width
+          rightBottomCoordinates.y - startingCordinates.y // height
         );
         ctx.stroke();
       });
+    } else {
+      let isInBox = false;
+      const [x, y] = getRealCoordinates(e);
+
+      for (let i = 0; i < annotationsList.length; i++) {
+        let [x1, y1, x2, y2] = annotationsList[i].coordinates;
+        x2 += x1;
+        y2 += y1;
+
+        if (x1 <= x && y1 <= y && x2 >= x && y2 >= y) {
+          isInBox = true;
+          break;
+        }
+      }
+      setIsCursorInBox(isInBox);
+      console.log({ x, y, ann: annotationsList[0]?.coordinates, isInBox });
     }
   };
 
   const mouseDownHandler = (e) => {
     setmouseState(MOUSE_STATE.mouseDown);
-    startingCordinates = { x: e.clientX, y: e.clientY };
+    const [x, y] = getRealCoordinates(e);
+    startingCordinates = { x, y };
   };
 
   const mouseUpHandler = (e) => {
     setmouseState(MOUSE_STATE.mouseUp);
 
-    const [leftTopCoordinate_x, leftTopCoordinates_y] = getRealCoordinates([
-      startingCordinates.x,
-      startingCordinates.y,
-    ]);
+    const [x, y] = getRealCoordinates(e);
 
-    const rightBottomCoordinates = {
-      width: e.clientX - startingCordinates.x,
-      height: e.clientY - startingCordinates.y,
-    };
+    const rightBottomCoordinates = { x, y };
 
-    if (rightBottomCoordinates.width && rightBottomCoordinates.height) {
-      dispatch({
-        type: "APPEND_NEW_COORDINATES",
-        payload: [
-          {
-            coordinates: [
-              leftTopCoordinate_x,
-              leftTopCoordinates_y,
-              rightBottomCoordinates.width,
-              rightBottomCoordinates.height,
-            ],
-            fieldName: new Date().toTimeString(),
-          },
-          ...annotationsList,
-        ],
-      });
-      console.log(annotationsList);
+    dispatch({
+      type: "APPEND_NEW_COORDINATES",
+      payload: [
+        {
+          coordinates: [
+            startingCordinates.x,
+            startingCordinates.y,
+            rightBottomCoordinates.x - startingCordinates.x,
+            rightBottomCoordinates.y - startingCordinates.y,
+          ],
+          fieldName: "untitled",
+        },
+        ...annotationsList,
+      ],
+    });
+    console.log(annotationsList);
 
-      setTimeout(() => {
-        imageStateList.push(canvas.toDataURL());
-      }, 100);
-    }
+    setTimeout(() => {
+      imageStateList.push(canvas.toDataURL());
+    }, 100);
   };
 
   const clickHandler = (e) => {
@@ -188,9 +192,9 @@ const MainContent = () => {
     };
   };
 
-  const getRealCoordinates = ([x, y]) => [
-    x - canvas.offsetLeft + window.scrollX,
-    y - canvas.offsetTop + window.scrollY,
+  const getRealCoordinates = (e) => [
+    e.clientX - canvas.offsetLeft + window.scrollX,
+    e.clientY - canvas.offsetTop + window.scrollY,
   ];
 
   return (
@@ -201,6 +205,7 @@ const MainContent = () => {
         onMouseDown={mouseDownHandler}
         onMouseUp={mouseUpHandler}
         onClick={clickHandler}
+        style={{ cursor: isCursorInBox ? "pointer" : "crosshair" }}
       ></canvas>
       {/* {imageStateList.length}
       <div>
