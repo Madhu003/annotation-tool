@@ -15,6 +15,8 @@ let startingCordinates = {};
 let imageStateList = [];
 let canvas = null;
 let ctx = null;
+let mouseMoveHandlerAfterThrottle = () => {};
+let flag = true;
 
 const MainContent = () => {
   const [mouseState, setmouseState] = useState(MOUSE_STATE.mouseUp);
@@ -69,24 +71,29 @@ const MainContent = () => {
     imageStateList = [];
   }, [uploadedFile]);
 
+  useEffect(() => {}, [annotationsList]);
+
   const mouseMoveHandler = (e) => {
-    if (mouseState === MOUSE_STATE.mouseDown) {
-      const [x, y] = getRealCoordinates(e);
+    if (mouseState === MOUSE_STATE.mouseDown && flag) {
+      flag = false;
+      setTimeout(() => {
+        const [x, y] = getRealCoordinates(e);
+        const rightBottomCoordinates = { x, y };
 
-      const rightBottomCoordinates = { x, y };
-
-      drawImage(imageStateList[imageStateList.length - 1], () => {
-        ctx.beginPath();
-        ctx.lineWidth = "2";
-        ctx.strokeStyle = "#ffffff";
-        ctx.rect(
-          startingCordinates.x,
-          startingCordinates.y,
-          rightBottomCoordinates.x - startingCordinates.x, // width
-          rightBottomCoordinates.y - startingCordinates.y // height
-        );
-        ctx.stroke();
-      });
+        drawImage(imageStateList[imageStateList.length - 1], () => {
+          ctx.beginPath();
+          ctx.lineWidth = "2";
+          ctx.strokeStyle = "#ffffff";
+          ctx.rect(
+            startingCordinates.x,
+            startingCordinates.y,
+            rightBottomCoordinates.x - startingCordinates.x, // width
+            rightBottomCoordinates.y - startingCordinates.y // height
+          );
+          ctx.stroke();
+        });
+        flag = true;
+      }, 150);
     } else {
       let isInBox = false;
       const [x, y] = getRealCoordinates(e);
@@ -102,7 +109,7 @@ const MainContent = () => {
         }
       }
       setIsCursorInBox(isInBox);
-      console.log({ x, y, ann: annotationsList[0]?.coordinates, isInBox });
+      // console.log({ x, y, ann: annotationsList[0]?.coordinates, isInBox });
     }
   };
 
@@ -113,8 +120,10 @@ const MainContent = () => {
   };
 
   const mouseUpHandler = (e) => {
-    setmouseState(MOUSE_STATE.mouseUp);
     let [x2, y2] = getRealCoordinates(e);
+    if (startingCordinates.x == x2 && startingCordinates.y == y2) return;
+
+    setmouseState(MOUSE_STATE.mouseUp);
 
     let x1 = Math.min(startingCordinates.x, x2);
     let y1 = Math.min(startingCordinates.y, y2);
@@ -141,21 +150,40 @@ const MainContent = () => {
   };
 
   const clickHandler = (e) => {
-    const [x, y] = getRealCoordinates([
-      startingCordinates.x,
-      startingCordinates.y,
-    ]);
+    console.log("click clallded");
+    const [x, y] = getRealCoordinates(e);
+    if (startingCordinates.x != x || startingCordinates.y != y) return;
 
-    annotationsList.forEach((item) => {
-      if (
-        item.coordinates[0] <= x &&
-        item.coordinates[1] <= y &&
-        item.coordinates[4] >= x &&
-        item.coordinates[5] >= y
-      ) {
-        item.fieldName = generateRandomString();
-        document.querySelector("#field-name").value = item.fieldName;
+    for (let i = 0; i < annotationsList.length; i++) {
+      let [x1, y1, x2, y2] = annotationsList[i].coordinates;
+      x2 += x1;
+      y2 += y1;
+      annotationsList[i].selected = false;
+
+      if (x1 <= x && y1 <= y && x2 >= x && y2 >= y) {
+        annotationsList[i].selected = true;
       }
+    }
+
+    drawImage(uploadedFile, () => {
+      console.log(annotationsList.length);
+      annotationsList.forEach((item) => {
+        const x1 = item.coordinates[0];
+        const y1 = item.coordinates[1];
+        const x2 = item.coordinates[2];
+        const y2 = item.coordinates[3];
+
+        ctx.beginPath();
+        ctx.lineWidth = "2";
+        ctx.strokeStyle = "#ffffff";
+        ctx.rect(
+          x1,
+          y1,
+          x2 - x1, // width
+          y2 - y1 // height
+        );
+        ctx.stroke();
+      });
     });
 
     dispatch({
@@ -204,16 +232,12 @@ const MainContent = () => {
   const dropImageHandler = (e) => {
     e.preventDefault();
 
-    console.log(e.dataTransfer.files);
-
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const fileObject = e.dataTransfer.files[0];
       const fileReader = new FileReader();
 
       if (fileObject.type == "application/pdf") {
         fileReader.onload = function (e) {
-          console.log(e);
-
           loadPdf(fileObject);
         };
       } else {

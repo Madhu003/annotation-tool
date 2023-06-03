@@ -15,3 +15,21 @@ export const dataURItoBlob = (dataURI) => {
 
   return new Blob([new Uint8Array(array)], { type: mime });
 };
+
+export const throttleFunction = (fun, time) => {
+  console.log({ fun, time });
+  let flag = true;
+  return function () {
+    const context = this;
+    const args = arguments;
+    console.log({ context, context, flag });
+
+    if (flag) {
+      flag = false;
+      setTimeout(() => {
+        fun.call(context, args);
+        flag = true;
+      }, time);
+    }
+  };
+};
