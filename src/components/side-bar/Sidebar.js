@@ -13,6 +13,11 @@ export const Sidebar = () => {
   const annotationsList = useSelector(
     (state) => state.mainContentReducer.annotationsList
   );
+
+  const searchText = useSelector(
+    (state) => state.sideBarReducer.searchText
+  );
+
   const dispatch = useDispatch();
 
   const loadPdf = async (fileObject) => {
@@ -134,23 +139,22 @@ export const Sidebar = () => {
 
       <hr />
 
-      <div class="input-group">
         <input
           type="text"
           class="form-control"
-          placeholder="Field Name"
+          placeholder="Label Name"
           id="field-name"
+          value={searchText || ""}
+          onChange={(e) => dispatch({ type: "CHANGE_LABEL_TEXT", payload: e.target.value })}
         />
-        <div class="input-group-append">
-          <button
-            class="btn btn-primary"
-            type="button"
-            style={{ borderBottomLeftRadius: 0, borderTopLeftRadius: 0 }}
-          >
-            Save
-          </button>
-        </div>
-      </div>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Value"
+          id="field-name"
+          value={searchText || ""}
+          onChange={(e) => dispatch({ type: "CHANGE_VALUE_TEXT", payload: e.target.value })}
+        />
     </div>
   );
 };

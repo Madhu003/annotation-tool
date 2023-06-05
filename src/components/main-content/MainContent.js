@@ -74,42 +74,51 @@ const MainContent = () => {
   useEffect(() => {}, [annotationsList]);
 
   const mouseMoveHandler = (e) => {
-    if (mouseState === MOUSE_STATE.mouseDown && flag) {
+    if (flag) {
       flag = false;
-      setTimeout(() => {
-        const [x, y] = getRealCoordinates(e);
-        const rightBottomCoordinates = { x, y };
 
-        drawImage(imageStateList[imageStateList.length - 1], () => {
-          ctx.beginPath();
-          ctx.lineWidth = "2";
-          ctx.strokeStyle = "#ffffff";
-          ctx.rect(
+      setTimeout(() => {
+        if (mouseState === MOUSE_STATE.mouseDown) {
+          const [x, y] = getRealCoordinates(e);
+          const rightBottomCoordinates = { x, y };
+          console.log("move", [
             startingCordinates.x,
             startingCordinates.y,
             rightBottomCoordinates.x - startingCordinates.x, // width
-            rightBottomCoordinates.y - startingCordinates.y // height
-          );
-          ctx.stroke();
-        });
-        flag = true;
-      }, 150);
-    } else {
-      let isInBox = false;
-      const [x, y] = getRealCoordinates(e);
+            rightBottomCoordinates.y - startingCordinates.y,
+          ]);
 
-      for (let i = 0; i < annotationsList.length; i++) {
-        let [x1, y1, x2, y2] = annotationsList[i].coordinates;
-        x2 += x1;
-        y2 += y1;
+          drawImage(imageStateList[imageStateList.length - 1], () => {
+            ctx.beginPath();
+            ctx.lineWidth = "2";
+            ctx.strokeStyle = "#ffffff";
+            ctx.rect(
+              startingCordinates.x,
+              startingCordinates.y,
+              rightBottomCoordinates.x - startingCordinates.x, // width
+              rightBottomCoordinates.y - startingCordinates.y // height
+            );
+            ctx.stroke();
+          });
+        } else {
+          let isInBox = false;
+          const [x, y] = getRealCoordinates(e);
 
-        if (x1 <= x && y1 <= y && x2 >= x && y2 >= y) {
-          isInBox = true;
-          break;
+          for (let i = 0; i < annotationsList.length; i++) {
+            let [x1, y1, x2, y2] = annotationsList[i].coordinates;
+            x2 += x1;
+            y2 += y1;
+
+            if (x1 <= x && y1 <= y && x2 >= x && y2 >= y) {
+              isInBox = true;
+              break;
+            }
+          }
+          setIsCursorInBox(isInBox);
+          // console.log({ x, y, ann: annotationsList[0]?.coordinates, isInBox });
         }
-      }
-      setIsCursorInBox(isInBox);
-      // console.log({ x, y, ann: annotationsList[0]?.coordinates, isInBox });
+        flag = true;
+      }, 50);
     }
   };
 
@@ -120,17 +129,16 @@ const MainContent = () => {
   };
 
   const mouseUpHandler = (e) => {
+    setmouseState(MOUSE_STATE.mouseUp);
     let [x2, y2] = getRealCoordinates(e);
     if (startingCordinates.x == x2 && startingCordinates.y == y2) return;
-
-    setmouseState(MOUSE_STATE.mouseUp);
 
     let x1 = Math.min(startingCordinates.x, x2);
     let y1 = Math.min(startingCordinates.y, y2);
 
     x2 = Math.max(startingCordinates.x, x2);
     y2 = Math.max(startingCordinates.y, y2);
-
+    console.log("up", [x1, y1, x2 - x1, y2 - y1]);
     dispatch({
       type: "APPEND_NEW_COORDINATES",
       payload: [
@@ -162,12 +170,17 @@ const MainContent = () => {
 
       if (x1 <= x && y1 <= y && x2 >= x && y2 >= y) {
         annotationsList[i].selected = true;
+        dispatch({
+          type: "CHANGE_LABEL_TEXT",
+          payload: annotationsList[i].value,
+        });
       }
     }
 
     drawImage(uploadedFile, () => {
-      console.log(annotationsList.length);
       annotationsList.forEach((item) => {
+        console.log("click", item.coordinates);
+
         const x1 = item.coordinates[0];
         const y1 = item.coordinates[1];
         const x2 = item.coordinates[2];
@@ -175,12 +188,12 @@ const MainContent = () => {
 
         ctx.beginPath();
         ctx.lineWidth = "2";
-        ctx.strokeStyle = "#ffffff";
+        ctx.strokeStyle = item.selected ? "#ff0000" : "#ffffff";
         ctx.rect(
           x1,
           y1,
-          x2 - x1, // width
-          y2 - y1 // height
+          x2, // width
+          y2 // height
         );
         ctx.stroke();
       });

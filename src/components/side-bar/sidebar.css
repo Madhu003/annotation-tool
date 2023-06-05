@@ -1,8 +1,12 @@
 .container {
-    border-right: 1px solid black;
-    min-height: 100vh;
+  border-right: 1px solid black;
+  min-height: 100vh;
 }
 
-#image-paceholder{
-    display: none;
+.container input {
+  margin-bottom: 10px;
+}
+
+#image-paceholder {
+  display: none;
 }
