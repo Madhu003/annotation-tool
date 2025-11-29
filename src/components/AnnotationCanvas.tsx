@@ -11,6 +11,8 @@ interface AnnotationCanvasProps {
   annotations?: DetectedBox[]
   onAnnotationsChange?: (annotations: DetectedBox[]) => void
   mode?: 'select' | 'draw'
+  zoom?: number
+  aspectRatio?: number | 'original'
 }
 
 export function AnnotationCanvas({ 
@@ -19,7 +21,9 @@ export function AnnotationCanvas({
   enhancementSettings, 
   annotations, 
   onAnnotationsChange,
-  mode = 'select' 
+  mode = 'select',
+  zoom = 1,
+  aspectRatio = 'original'
 }: AnnotationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -45,6 +49,13 @@ export function AnnotationCanvas({
     }
   }, [])
 
+  // Handle Zoom
+  useEffect(() => {
+    if (!fabricCanvas) return
+    fabricCanvas.setZoom(zoom)
+    fabricCanvas.requestRenderAll()
+  }, [fabricCanvas, zoom])
+
   // Update selection mode
   useEffect(() => {
     if (!fabricCanvas) return
@@ -62,31 +73,67 @@ export function AnnotationCanvas({
     fabricCanvas.requestRenderAll()
   }, [fabricCanvas, mode])
 
-  // Load Image
+  // Load Image & Handle Resize/Aspect Ratio
   useEffect(() => {
     if (!fabricCanvas || !imageUrl || !containerRef.current) return
 
     const loadImage = async () => {
       try {
-        const img = await fabric.FabricImage.fromURL(imageUrl)
+        // If image is already loaded and just aspect ratio changed, we might want to optimize
+        // But for simplicity, let's reload/rescale
         
-        // Calculate scale to fit container
+        let img = fabricImage
+        if (!img) {
+            img = await fabric.FabricImage.fromURL(imageUrl)
+            setFabricImage(img)
+            fabricCanvas.backgroundImage = img
+        }
+        
         const containerWidth = containerRef.current?.clientWidth || 800
-        const containerHeight = containerRef.current?.clientHeight || 600
-        
-        const scaleX = containerWidth / img.width
-        const scaleY = containerHeight / img.height
-        const scale = Math.min(scaleX, scaleY, 1) // Don't upscale if smaller
+        let containerHeight = containerRef.current?.clientHeight || 600
 
-        img.scale(scale)
+        // Adjust container height based on aspect ratio if needed
+        // Note: We can't easily change the DOM container height from here without affecting layout
+        // So we will fit the canvas WITHIN the available container space respecting the aspect ratio
         
+        let targetWidth = containerWidth
+        let targetHeight = containerHeight
+
+        if (aspectRatio !== 'original') {
+            // Force aspect ratio
+            const ratio = aspectRatio as number
+            // Try to fit width
+            if (containerWidth / ratio <= containerHeight) {
+                targetHeight = containerWidth / ratio
+            } else {
+                targetWidth = containerHeight * ratio
+            }
+        } else {
+             // Original aspect ratio of image
+             const ratio = img.width / img.height
+             if (containerWidth / ratio <= containerHeight) {
+                targetHeight = containerWidth / ratio
+            } else {
+                targetWidth = containerHeight * ratio
+            }
+        }
+
         fabricCanvas.setDimensions({
-            width: img.width * scale,
-            height: img.height * scale
+            width: targetWidth,
+            height: targetHeight
         })
+
+        // Scale image to fit the new canvas dimensions
+        const scaleX = targetWidth / img.width
+        const scaleY = targetHeight / img.height
+        // We want 'contain'
+        // Actually, if we set canvas to aspect ratio, we want 'fill' (which is same as contain here)
         
-        fabricCanvas.backgroundImage = img
-        setFabricImage(img)
+        img.scaleX = scaleX
+        img.scaleY = scaleY
+        img.left = 0
+        img.top = 0
+        
         fabricCanvas.renderAll()
         
       } catch (error) {
@@ -95,7 +142,7 @@ export function AnnotationCanvas({
     }
 
     loadImage()
-  }, [fabricCanvas, imageUrl])
+  }, [fabricCanvas, imageUrl, aspectRatio]) // Removed fabricImage from deps to avoid loop if we set it inside
 
   // Apply Filters
   useEffect(() => {

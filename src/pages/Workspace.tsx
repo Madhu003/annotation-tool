@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Button } from "src/components/ui/button"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, MousePointer2, Square, Trash2 } from "lucide-react"
+import { ArrowLeft, MousePointer2, Square, Trash2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react"
 import { ImageUpload } from "src/components/ImageUpload"
 import { AnnotationCanvas } from "src/components/AnnotationCanvas"
 import { ImageEnhancer, type EnhancementSettings } from "src/components/ImageEnhancer"
@@ -21,6 +21,8 @@ export default function Workspace() {
   })
   const [annotations, setAnnotations] = useState<DetectedBox[]>([])
   const [mode, setMode] = useState<'select' | 'draw'>('select')
+  const [zoom, setZoom] = useState(1)
+  const [aspectRatio, setAspectRatio] = useState<number | 'original'>('original')
 
   const handleUpload = (file: File) => {
     setImage(file)
@@ -92,6 +94,37 @@ export default function Workspace() {
                   <Square className="mr-2 h-4 w-4" /> Draw
                 </Button>
               </div>
+              
+              <div className="flex items-center justify-between gap-2 p-2 border rounded-md">
+                <Button variant="ghost" size="icon" onClick={() => setZoom(z => Math.max(0.1, z - 0.1))}>
+                    <ZoomOut className="h-4 w-4" />
+                </Button>
+                <span className="text-xs w-8 text-center">{Math.round(zoom * 100)}%</span>
+                <Button variant="ghost" size="icon" onClick={() => setZoom(z => Math.min(5, z + 0.1))}>
+                    <ZoomIn className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setZoom(1)}>
+                    <RotateCcw className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium">Aspect Ratio</label>
+                <select 
+                    className="w-full p-2 text-sm border rounded-md bg-background"
+                    value={aspectRatio === 'original' ? 'original' : aspectRatio}
+                    onChange={(e) => {
+                        const val = e.target.value
+                        setAspectRatio(val === 'original' ? 'original' : parseFloat(val))
+                    }}
+                >
+                    <option value="original">Original</option>
+                    <option value="1.777777">16:9</option>
+                    <option value="1.333333">4:3</option>
+                    <option value="1">1:1</option>
+                </select>
+              </div>
+
               <AutoDetectButton imageFile={image} onDetect={setAnnotations} />
               <Button 
                 variant="destructive" 
@@ -115,13 +148,15 @@ export default function Workspace() {
         </aside>
         <main className="flex-1 bg-muted/20 p-4 relative overflow-hidden flex items-center justify-center">
           {imageUrl ? (
-             <div className="relative h-full w-full overflow-hidden">
+             <div className="relative h-full w-full overflow-hidden flex items-center justify-center">
                 <AnnotationCanvas 
                   imageUrl={imageUrl} 
                   enhancementSettings={enhancementSettings}
                   annotations={annotations}
                   onAnnotationsChange={setAnnotations}
                   mode={mode}
+                  zoom={zoom}
+                  aspectRatio={aspectRatio}
                 />
              </div>
           ) : (
