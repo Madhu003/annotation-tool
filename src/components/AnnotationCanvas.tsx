@@ -101,7 +101,6 @@ export function AnnotationCanvas({
   useEffect(() => {
     if (!fabricCanvas || !fabricImage || !enhancementSettings) return
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filters: any[] = []
 
     if (enhancementSettings.brightness !== 0) {
