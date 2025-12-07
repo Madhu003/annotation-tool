@@ -1,7 +1,9 @@
 import { useState } from "react"
 import { Button } from "src/components/ui/button"
+import { Input } from "src/components/ui/input"
+import { Label } from "src/components/ui/label"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, MousePointer2, Square, Trash2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react"
+import { ArrowLeft, MousePointer2, Square, Trash2, ZoomIn, ZoomOut, RotateCcw, X } from "lucide-react"
 import { ImageUpload } from "src/components/ImageUpload"
 import { AnnotationCanvas } from "src/components/AnnotationCanvas"
 import { ImageEnhancer, type EnhancementSettings } from "src/components/ImageEnhancer"
@@ -23,6 +25,7 @@ export default function Workspace() {
   const [mode, setMode] = useState<'select' | 'draw'>('select')
   const [zoom, setZoom] = useState(1)
   const [aspectRatio, setAspectRatio] = useState<number | 'original'>('original')
+  const [selectedAnnotationIndex, setSelectedAnnotationIndex] = useState<number | null>(null)
 
   const handleUpload = (file: File) => {
     setImage(file)
@@ -42,7 +45,28 @@ export default function Workspace() {
   const handleClearAnnotations = () => {
     if (confirm("Are you sure you want to delete all annotations?")) {
       setAnnotations([])
+      setSelectedAnnotationIndex(null)
     }
+  }
+  
+  const handleDeleteAnnotation = (index: number) => {
+    const newAnnotations = annotations.filter((_, i) => i !== index)
+    setAnnotations(newAnnotations)
+    if (selectedAnnotationIndex === index) {
+      setSelectedAnnotationIndex(null)
+    } else if (selectedAnnotationIndex !== null && selectedAnnotationIndex > index) {
+      setSelectedAnnotationIndex(selectedAnnotationIndex - 1)
+    }
+  }
+  
+  const handleTextChange = (index: number, text: string) => {
+    const newAnnotations = [...annotations]
+    newAnnotations[index] = { ...newAnnotations[index], text }
+    setAnnotations(newAnnotations)
+  }
+  
+  const handleAnnotationSelect = (index: number | null) => {
+    setSelectedAnnotationIndex(index)
   }
 
   const handleExport = () => {
@@ -157,6 +181,8 @@ export default function Workspace() {
                   mode={mode}
                   zoom={zoom}
                   aspectRatio={aspectRatio}
+                  selectedAnnotationIndex={selectedAnnotationIndex}
+                  onAnnotationSelect={handleAnnotationSelect}
                 />
              </div>
           ) : (
@@ -165,13 +191,75 @@ export default function Workspace() {
             </div>
           )}
         </main>
-        <aside className="w-80 border-l bg-muted/10 p-4">
+        <aside className="w-80 border-l bg-muted/10 p-4 overflow-y-auto">
           <div className="space-y-4">
             <h2 className="font-semibold">Annotations</h2>
             <div className="text-sm text-muted-foreground">
-              {annotations.length === 0 ? "No annotations yet" : `${annotations.length} regions detected`}
+              {annotations.length === 0 ? "No annotations yet" : `${annotations.length} region${annotations.length !== 1 ? 's' : ''} detected`}
             </div>
-            {/* List of annotations could go here */}
+            
+            {selectedAnnotationIndex !== null && annotations[selectedAnnotationIndex] && (
+              <div className="space-y-2 p-3 border rounded-md bg-background">
+                <Label htmlFor="annotation-text">Edit Label</Label>
+                <Input
+                  id="annotation-text"
+                  value={annotations[selectedAnnotationIndex].text || ''}
+                  onChange={(e) => handleTextChange(selectedAnnotationIndex, e.target.value)}
+                  placeholder="Enter label text..."
+                />
+                <div className="text-xs text-muted-foreground">
+                  Annotation #{selectedAnnotationIndex + 1}
+                </div>
+              </div>
+            )}
+            
+            {annotations.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">All Annotations</h3>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {annotations.map((annotation, index) => (
+                    <div
+                      key={index}
+                      className={`p-3 border rounded-md cursor-pointer transition-colors ${
+                        selectedAnnotationIndex === index
+                          ? 'bg-primary/10 border-primary'
+                          : 'bg-background hover:bg-muted/50'
+                      }`}
+                      onClick={() => handleAnnotationSelect(index)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-muted-foreground mb-1">
+                            Annotation #{index + 1}
+                          </div>
+                          <div className="text-sm">
+                            {annotation.text ? (
+                              <span className="font-medium">{annotation.text}</span>
+                            ) : (
+                              <span className="text-muted-foreground italic">No label</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {Math.round(annotation.x1)}%, {Math.round(annotation.y1)}% → {Math.round(annotation.x2)}%, {Math.round(annotation.y2)}%
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 flex-shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteAnnotation(index)
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </aside>
       </div>

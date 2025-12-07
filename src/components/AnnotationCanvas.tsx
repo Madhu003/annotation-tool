@@ -13,6 +13,8 @@ interface AnnotationCanvasProps {
   mode?: 'select' | 'draw'
   zoom?: number
   aspectRatio?: number | 'original'
+  selectedAnnotationIndex?: number | null
+  onAnnotationSelect?: (index: number | null) => void
 }
 
 export function AnnotationCanvas({ 
@@ -23,7 +25,9 @@ export function AnnotationCanvas({
   onAnnotationsChange,
   mode = 'select',
   zoom = 1,
-  aspectRatio = 'original'
+  aspectRatio = 'original',
+  selectedAnnotationIndex,
+  onAnnotationSelect
 }: AnnotationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -32,6 +36,9 @@ export function AnnotationCanvas({
   const isDrawingRef = useRef(false)
   const startPosRef = useRef<{x: number, y: number} | null>(null)
   const activeRectRef = useRef<fabric.Rect | null>(null)
+  const annotationMapRef = useRef<Map<fabric.Rect, number>>(new Map())
+  const textObjectsRef = useRef<Map<fabric.Rect, fabric.Text>>(new Map())
+  const skipSyncRef = useRef(false)
 
   // Initialize Canvas
   useEffect(() => {
@@ -72,6 +79,22 @@ export function AnnotationCanvas({
     })
     fabricCanvas.requestRenderAll()
   }, [fabricCanvas, mode])
+  
+  // Handle external selection (from sidebar)
+  useEffect(() => {
+    if (!fabricCanvas || selectedAnnotationIndex === undefined) return
+    
+    const rects = fabricCanvas.getObjects().filter(obj => obj.type === 'rect') as fabric.Rect[]
+    const targetRect = rects.find(rect => annotationMapRef.current.get(rect) === selectedAnnotationIndex)
+    
+    if (targetRect && selectedAnnotationIndex !== null) {
+      fabricCanvas.setActiveObject(targetRect)
+      fabricCanvas.requestRenderAll()
+    } else if (selectedAnnotationIndex === null) {
+      fabricCanvas.discardActiveObject()
+      fabricCanvas.requestRenderAll()
+    }
+  }, [fabricCanvas, selectedAnnotationIndex])
 
   // Load Image & Handle Resize/Aspect Ratio
   useEffect(() => {
@@ -166,34 +189,127 @@ export function AnnotationCanvas({
 
   }, [fabricCanvas, fabricImage, enhancementSettings])
 
+  // Helper function to create text label for a rectangle
+  const createTextLabel = (rect: fabric.Rect, text: string | undefined): fabric.Text | null => {
+    if (!text || text.trim() === '') return null
+    
+    const textObj = new fabric.Text(text, {
+      left: (rect.left || 0) + 5,
+      top: (rect.top || 0) - 20,
+      fontSize: 14,
+      fill: 'white',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      padding: 4,
+      selectable: false,
+      evented: false,
+      fontFamily: 'Arial',
+    })
+    
+    return textObj
+  }
+
+  // Helper function to update text label position
+  const updateTextLabelPosition = (rect: fabric.Rect, textObj: fabric.Text) => {
+    textObj.set({
+      left: (rect.left || 0) + 5,
+      top: (rect.top || 0) - 20,
+    })
+  }
+
   // Sync Annotations to Canvas (One-way sync from props to canvas)
-  // We only do this when annotations prop changes significantly or on init
-  // To avoid loops, we might need to be careful. 
-  // For now, let's just render initial annotations or when they are replaced (e.g. auto-detect)
+  // We only sync when skipSyncRef is false (i.e., not during user interactions)
   useEffect(() => {
     if (!fabricCanvas || !annotations || !fabricImage) return
-
-    // Check if we need to update. If canvas has same number of rects, maybe skip?
-    // But annotations might have changed.
-    // For simplicity, clear and redraw if the count differs or if it's a fresh load.
-    // Real implementation would diff.
-    
-    // We'll clear all rects and re-add.
-    const objects = fabricCanvas.getObjects()
-    const rects = objects.filter(obj => obj.type === 'rect')
-    
-    // If we are currently drawing, don't interrupt?
+    if (skipSyncRef.current) return
     if (isDrawingRef.current) return
 
-    // Remove existing rects
-    rects.forEach(r => fabricCanvas.remove(r))
+    const objects = fabricCanvas.getObjects()
+    const rects = objects.filter(obj => obj.type === 'rect') as fabric.Rect[]
+    const texts = objects.filter(obj => obj.type === 'text') as fabric.Text[]
+    
+    // Try to update existing rectangles and text labels instead of recreating
+    // Only recreate if count doesn't match
+    const needsFullRecreate = rects.length !== annotations.length
+    
+    if (!needsFullRecreate && rects.length > 0) {
+      // Update existing rectangles and text labels
+      let needsRecreate = false
+      
+      rects.forEach((rect, idx) => {
+        const box = annotations[idx]
+        if (!box) {
+          needsRecreate = true
+          return
+        }
+        
+        const imgWidth = fabricImage.width || 0
+        const imgHeight = fabricImage.height || 0
+        const scaleX = fabricImage.scaleX || 1
+        const scaleY = fabricImage.scaleY || 1
+        
+        const expectedLeft = (box.x1 / 100) * imgWidth * scaleX
+        const expectedTop = (box.y1 / 100) * imgHeight * scaleY
+        const expectedWidth = ((box.x2 - box.x1) / 100) * imgWidth * scaleX
+        const expectedHeight = ((box.y2 - box.y1) / 100) * imgHeight * scaleY
+        
+        // Check if position changed significantly (more than 1 pixel)
+        const posChanged = Math.abs((rect.left || 0) - expectedLeft) > 1 ||
+                          Math.abs((rect.top || 0) - expectedTop) > 1 ||
+                          Math.abs((rect.width || 0) * (rect.scaleX || 1) - expectedWidth) > 1 ||
+                          Math.abs((rect.height || 0) * (rect.scaleY || 1) - expectedHeight) > 1
+        
+        if (posChanged) {
+          needsRecreate = true
+          return
+        }
+        
+        // Update text label if text changed
+        const textObj = textObjectsRef.current.get(rect)
+        const currentText = box.text || ''
+        const hasText = currentText.trim() !== ''
+        
+        if (hasText && !textObj) {
+          // Need to add text label
+          const newTextObj = createTextLabel(rect, currentText)
+          if (newTextObj) {
+            fabricCanvas.add(newTextObj)
+            textObjectsRef.current.set(rect, newTextObj)
+          }
+        } else if (!hasText && textObj) {
+          // Need to remove text label
+          fabricCanvas.remove(textObj)
+          textObjectsRef.current.delete(rect)
+        } else if (hasText && textObj && textObj.text !== currentText) {
+          // Update text content
+          textObj.set('text', currentText)
+          updateTextLabelPosition(rect, textObj)
+        }
+      })
+      
+      if (!needsRecreate) {
+        fabricCanvas.requestRenderAll()
+        return // Updated in place, no need to recreate
+      }
+    }
+    
+    // Full recreate if needed
+    rects.forEach(r => {
+      const textObj = textObjectsRef.current.get(r)
+      if (textObj) {
+        fabricCanvas.remove(textObj)
+        textObjectsRef.current.delete(r)
+      }
+      fabricCanvas.remove(r)
+      annotationMapRef.current.delete(r)
+    })
+    texts.forEach(t => fabricCanvas.remove(t))
 
     const imgWidth = fabricImage.width || 0
     const imgHeight = fabricImage.height || 0
     const scaleX = fabricImage.scaleX || 1
     const scaleY = fabricImage.scaleY || 1
 
-    annotations.forEach(box => {
+    annotations.forEach((box, index) => {
         const left = (box.x1 / 100) * imgWidth * scaleX
         const top = (box.y1 / 100) * imgHeight * scaleY
         const width = ((box.x2 - box.x1) / 100) * imgWidth * scaleX
@@ -212,15 +328,28 @@ export function AnnotationCanvas({
             cornerStrokeColor: 'blue',
             borderColor: 'blue',
             selectable: mode === 'select',
-            evented: mode === 'select'
+            evented: mode === 'select',
         })
         
+        // Store annotation index in rect
+        ;(rect as any).annotationIndex = index
+        annotationMapRef.current.set(rect, index)
+        
         fabricCanvas.add(rect)
+        
+        // Add text label if exists
+        if (box.text && box.text.trim() !== '') {
+          const textObj = createTextLabel(rect, box.text)
+          if (textObj) {
+            fabricCanvas.add(textObj)
+            textObjectsRef.current.set(rect, textObj)
+          }
+        }
     })
 
     fabricCanvas.requestRenderAll()
 
-  }, [fabricCanvas, annotations, fabricImage, mode]) // Added mode to dependency to update selectability
+  }, [fabricCanvas, annotations, fabricImage, mode])
 
   // Handle Canvas Events (Drawing & Modification)
   useEffect(() => {
@@ -228,6 +357,8 @@ export function AnnotationCanvas({
 
       const updateAnnotations = () => {
           if (!onAnnotationsChange || !fabricImage) return
+          
+          skipSyncRef.current = true
           
           const imgWidth = fabricImage.width || 1
           const imgHeight = fabricImage.height || 1
@@ -248,20 +379,35 @@ export function AnnotationCanvas({
               const x2 = ((left + width) / (imgWidth * scaleX)) * 100
               const y2 = ((top + height) / (imgHeight * scaleY)) * 100
 
+              // Get text from stored annotation or from text object
+              const annotationIndex = annotationMapRef.current.get(rect)
+              const existingText = annotationIndex !== undefined && annotations?.[annotationIndex]?.text
+              
               return {
                   x1: Math.max(0, x1),
                   y1: Math.max(0, y1),
                   x2: Math.min(100, x2),
                   y2: Math.min(100, y2),
-                  confidence: 1 // Manual annotations have 100% confidence
+                  confidence: 1, // Manual annotations have 100% confidence
+                  text: existingText || ''
               }
           })
           
           onAnnotationsChange(newAnnotations)
+          
+          // Reset skip sync after a short delay to allow state to update
+          setTimeout(() => {
+            skipSyncRef.current = false
+          }, 100)
       }
 
       const handleMouseDown = (opt: any) => {
           if (mode !== 'draw') return
+          
+          // Don't draw if clicking on an existing rectangle
+          if (opt.target && opt.target.type === 'rect') {
+            return
+          }
           
           const pointer = fabricCanvas.getPointer(opt.e)
           isDrawingRef.current = true
@@ -304,23 +450,89 @@ export function AnnotationCanvas({
       }
 
       const handleMouseUp = () => {
-          if (isDrawingRef.current) {
+          if (isDrawingRef.current && activeRectRef.current) {
+              const rect = activeRectRef.current
+              
+              // Only finalize if rectangle has meaningful size
+              const width = (rect.width || 0) * (rect.scaleX || 1)
+              const height = (rect.height || 0) * (rect.scaleY || 1)
+              
+              if (width > 5 && height > 5) {
+                  // Make rectangle selectable and editable
+                  rect.set({
+                      selectable: mode === 'select',
+                      evented: mode === 'select',
+                  })
+                  
+                  // Assign annotation index
+                  const newIndex = annotations?.length || 0
+                  ;(rect as any).annotationIndex = newIndex
+                  annotationMapRef.current.set(rect, newIndex)
+                  
+                  // Trigger update
+                  updateAnnotations()
+              } else {
+                  // Remove tiny rectangles
+                  fabricCanvas.remove(rect)
+              }
+              
               isDrawingRef.current = false
               activeRectRef.current = null
               startPosRef.current = null
-              
-              // Trigger update
-              updateAnnotations()
-              
-              // If we want to stay in draw mode, we can. 
-              // Or switch to select. For now stay in draw.
           }
       }
 
-      const handleObjectModified = () => {
-          updateAnnotations()
+      const handleObjectModified = (opt: any) => {
+          const obj = opt.target
+          if (obj && obj.type === 'rect') {
+              // Update text label position when rect moves/resizes
+              const textObj = textObjectsRef.current.get(obj as fabric.Rect)
+              if (textObj) {
+                  updateTextLabelPosition(obj as fabric.Rect, textObj)
+                  fabricCanvas.requestRenderAll()
+              }
+              updateAnnotations()
+          }
       }
       
+      const handleSelectionCreated = (opt: any) => {
+          const activeObject = opt.selected?.[0] || opt.target
+          if (activeObject && activeObject.type === 'rect') {
+              const index = annotationMapRef.current.get(activeObject as fabric.Rect)
+              if (index !== undefined && onAnnotationSelect) {
+                  onAnnotationSelect(index)
+              }
+          }
+      }
+      
+      const handleSelectionCleared = () => {
+          if (onAnnotationSelect) {
+              onAnnotationSelect(null)
+          }
+      }
+      
+      // Handle Delete key
+      const handleKeyDown = (e: KeyboardEvent) => {
+          if ((e.key === 'Delete' || e.key === 'Backspace') && mode === 'select') {
+              const activeObjects = fabricCanvas.getActiveObjects()
+              if (activeObjects.length > 0) {
+                  activeObjects.forEach(obj => {
+                      if (obj.type === 'rect') {
+                          const textObj = textObjectsRef.current.get(obj as fabric.Rect)
+                          if (textObj) {
+                              fabricCanvas.remove(textObj)
+                              textObjectsRef.current.delete(obj as fabric.Rect)
+                          }
+                          annotationMapRef.current.delete(obj as fabric.Rect)
+                          fabricCanvas.remove(obj)
+                      }
+                  })
+                  fabricCanvas.discardActiveObject()
+                  updateAnnotations()
+              }
+          }
+      }
+
       // Remove listeners to avoid duplicates
       fabricCanvas.off('mouse:down', handleMouseDown)
       fabricCanvas.off('mouse:move', handleMouseMove)
@@ -328,6 +540,9 @@ export function AnnotationCanvas({
       fabricCanvas.off('object:modified', handleObjectModified)
       fabricCanvas.off('object:moving', handleObjectModified)
       fabricCanvas.off('object:scaling', handleObjectModified)
+      fabricCanvas.off('selection:created', handleSelectionCreated)
+      fabricCanvas.off('selection:updated', handleSelectionCreated)
+      fabricCanvas.off('selection:cleared', handleSelectionCleared)
 
       // Add listeners
       fabricCanvas.on('mouse:down', handleMouseDown)
@@ -336,6 +551,11 @@ export function AnnotationCanvas({
       fabricCanvas.on('object:modified', handleObjectModified)
       fabricCanvas.on('object:moving', handleObjectModified)
       fabricCanvas.on('object:scaling', handleObjectModified)
+      fabricCanvas.on('selection:created', handleSelectionCreated)
+      fabricCanvas.on('selection:updated', handleSelectionCreated)
+      fabricCanvas.on('selection:cleared', handleSelectionCleared)
+      
+      window.addEventListener('keydown', handleKeyDown)
 
       return () => {
           fabricCanvas.off('mouse:down', handleMouseDown)
@@ -344,8 +564,12 @@ export function AnnotationCanvas({
           fabricCanvas.off('object:modified', handleObjectModified)
           fabricCanvas.off('object:moving', handleObjectModified)
           fabricCanvas.off('object:scaling', handleObjectModified)
+          fabricCanvas.off('selection:created', handleSelectionCreated)
+          fabricCanvas.off('selection:updated', handleSelectionCreated)
+          fabricCanvas.off('selection:cleared', handleSelectionCleared)
+          window.removeEventListener('keydown', handleKeyDown)
       }
-  }, [fabricCanvas, mode, fabricImage, onAnnotationsChange])
+  }, [fabricCanvas, mode, fabricImage, onAnnotationsChange, annotations, onAnnotationSelect])
 
   // Handle Resize (Basic)
   useEffect(() => {
